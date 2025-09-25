@@ -25,7 +25,15 @@ const AvatarComponent = ({
   toggled,
   username
 }: AvatarProps) => {
-  const firstInitial = username.charAt(0).toUpperCase();
+  // Get initials from username (max 2 characters)
+  const getInitials = (name: string) => {
+    const words = name.split(' ').filter(word => word.length > 0);
+    if (words.length >= 2) {
+      return (words[0].charAt(0) + words[1].charAt(0)).toUpperCase();
+    }
+    return name.charAt(0).toUpperCase();
+  };
+  const initials = getInitials(username);
 
   return (
     <Slot
@@ -57,7 +65,7 @@ const AvatarComponent = ({
           alt={username}
         />
       ) : (
-        <p className="text-100 font-bold">{firstInitial}</p>
+        <p className="text-100 font-bold">{initials}</p>
       )}
     </Slot>
   );

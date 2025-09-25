@@ -13,12 +13,16 @@ import {
   createUIMessageStreamResponse,
   type ToolSet
 } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { createWorkersAI } from 'workers-ai-provider';
 import { processToolCalls, cleanupMessages } from "./utils";
 import { tools, executions } from "./tools";
 // import { env } from "cloudflare:workers";
 
-const model = openai("gpt-4o-2024-11-20");
+// Using Workers AI with Llama 3.3 - free tier included!
+const model = (env: Env) => {
+  const workersai = createWorkersAI({ binding: env.AI });
+  return workersai("@cf/meta/llama-3.1-70b-instruct");
+};
 // Cloudflare AI Gateway
 // const openai = createOpenAI({
 //   apiKey: env.OPENAI_API_KEY,
@@ -61,7 +65,16 @@ export class Chat extends AIChatAgent<Env> {
         });
 
         const result = streamText({
-          system: `You are a helpful assistant that can do various tasks... 
+          system: `You are a mood-based playlist creator agent! 🎵
+
+I help users create personalized playlists based on their current mood, activities, and preferences. 
+
+Key capabilities:
+- Analyze user's mood from conversation
+- Suggest music genres and artists that match their mood
+- Remember their preferences over time
+- Create themed playlists for different activities
+- Track what they liked/disliked for better future recommendations
 
 ${getSchedulePrompt({ date: new Date() })}
 
@@ -69,7 +82,7 @@ If the user asks to schedule a task, use the schedule tool to schedule the task.
 `,
 
           messages: convertToModelMessages(processedMessages),
-          model,
+          model: model(this.env),
           tools: allTools,
           // Type boundary: streamText expects specific tool types, but base class uses ToolSet
           // This is safe because our tools satisfy ToolSet interface (verified by 'satisfies' in tools.ts)
@@ -112,16 +125,11 @@ export default {
   async fetch(request: Request, env: Env, _ctx: ExecutionContext) {
     const url = new URL(request.url);
 
-    if (url.pathname === "/check-open-ai-key") {
-      const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
+    if (url.pathname === "/check-workers-ai") {
+      const hasWorkersAI = !!env.AI;
       return Response.json({
-        success: hasOpenAIKey
+        success: hasWorkersAI
       });
-    }
-    if (!process.env.OPENAI_API_KEY) {
-      console.error(
-        "OPENAI_API_KEY is not set, don't forget to set it locally in .dev.vars, and use `wrangler secret bulk .dev.vars` to upload it to production"
-      );
     }
     return (
       // Route the request to our agent or return 404 if not found
