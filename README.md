@@ -19,7 +19,6 @@ A starter template for building AI-powered chat agents using Cloudflare's Agent 
 ## Prerequisites
 
 - Cloudflare account
-- OpenAI API key
 
 ## Quick Start
 
@@ -37,11 +36,7 @@ npm install
 
 3. Set up your environment:
 
-Create a `.dev.vars` file:
-
-```env
-OPENAI_API_KEY=your_openai_api_key
-```
+No additional environment variables needed - Workers AI is configured automatically!
 
 4. Run locally:
 
@@ -129,48 +124,27 @@ Tools can be configured in two ways:
 1. With an `execute` function for automatic execution
 2. Without an `execute` function, requiring confirmation and using the `executions` object to handle the confirmed action. NOTE: The keys in `executions` should match `toolsRequiringConfirmation` in `app.tsx`.
 
-### Use a different AI model provider
+### AI Model Configuration
 
-The starting [`server.ts`](https://github.com/cloudflare/agents-starter/blob/main/src/server.ts) implementation uses the [`ai-sdk`](https://sdk.vercel.ai/docs/introduction) and the [OpenAI provider](https://sdk.vercel.ai/providers/ai-sdk-providers/openai), but you can use any AI model provider by:
-
-1. Installing an alternative AI provider for the `ai-sdk`, such as the [`workers-ai-provider`](https://sdk.vercel.ai/providers/community-providers/cloudflare-workers-ai) or [`anthropic`](https://sdk.vercel.ai/providers/ai-sdk-providers/anthropic) provider:
-2. Replacing the AI SDK with the [OpenAI SDK](https://github.com/openai/openai-node)
-3. Using the Cloudflare [Workers AI + AI Gateway](https://developers.cloudflare.com/ai-gateway/providers/workersai/#workers-binding) binding API directly
-
-For example, to use the [`workers-ai-provider`](https://sdk.vercel.ai/providers/community-providers/cloudflare-workers-ai), install the package:
-
-```sh
-npm install workers-ai-provider
-```
-
-Add an `ai` binding to `wrangler.jsonc`:
+This project uses **Cloudflare Workers AI** with Llama 3.1 70B, which is included in the free tier. The AI binding is already configured in `wrangler.jsonc`:
 
 ```jsonc
-// rest of file
+{
   "ai": {
     "binding": "AI"
   }
-// rest of file
+}
 ```
 
-Replace the `@ai-sdk/openai` import and usage with the `workers-ai-provider`:
-
-```diff
-// server.ts
-// Change the imports
-- import { openai } from "@ai-sdk/openai";
-+ import { createWorkersAI } from 'workers-ai-provider';
-
-// Create a Workers AI instance
-+ const workersai = createWorkersAI({ binding: env.AI });
-
-// Use it when calling the streamText method (or other methods)
-// from the ai-sdk
-- const model = openai("gpt-4o-2024-11-20");
-+ const model = workersai("@cf/deepseek-ai/deepseek-r1-distill-qwen-32b")
+The model is configured in `src/server.ts`:
+```typescript
+const model = (env: Env) => {
+  const workersai = createWorkersAI({ binding: env.AI });
+  return workersai("@cf/meta/llama-3.1-70b-instruct");
+};
 ```
 
-Commit your changes and then run the `agents-starter` as per the rest of this README.
+No external API keys or additional setup required!
 
 ### Modifying the UI
 

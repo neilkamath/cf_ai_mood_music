@@ -1,4 +1,4 @@
-// via https://github.com/vercel/ai/blob/main/examples/next-openai/app/api/use-chat-human-in-the-loop/utils.ts
+// Utility functions for AI chat with human-in-the-loop confirmations
 
 import type {
   UIMessage,

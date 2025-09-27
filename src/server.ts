@@ -23,11 +23,7 @@ const model = (env: Env) => {
   const workersai = createWorkersAI({ binding: env.AI });
   return workersai("@cf/meta/llama-3.1-70b-instruct");
 };
-// Cloudflare AI Gateway
-// const openai = createOpenAI({
-//   apiKey: env.OPENAI_API_KEY,
-//   baseURL: env.GATEWAY_BASE_URL,
-// });
+// Using Workers AI - no external API keys needed
 
 /**
  * Chat Agent implementation that handles real-time AI chat interactions
@@ -125,6 +121,14 @@ export default {
   async fetch(request: Request, env: Env, _ctx: ExecutionContext) {
     const url = new URL(request.url);
 
+    if (url.pathname === "/check-open-ai-key") {
+      // Since we're using Workers AI, we check for the AI binding instead
+      const hasWorkersAI = !!env.AI;
+      return Response.json({
+        success: hasWorkersAI
+      });
+    }
+    
     if (url.pathname === "/check-workers-ai") {
       const hasWorkersAI = !!env.AI;
       return Response.json({

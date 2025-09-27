@@ -13,7 +13,6 @@ import { Avatar } from "@/components/avatar/Avatar";
 import { Toggle } from "@/components/toggle/Toggle";
 import { Textarea } from "@/components/textarea/Textarea";
 import { MemoizedMarkdown } from "@/components/memoized-markdown";
-import { Loader } from "@/components/loader/Loader";
 import { ToolInvocationCard } from "@/components/tool-invocation-card/ToolInvocationCard";
 
 // Icon imports
@@ -160,7 +159,7 @@ export default function Chat() {
           </div>
 
           <div className="flex-1">
-            <h2 className="font-semibold text-base">AI Chat Agent</h2>
+            <h2 className="font-semibold text-base">Mood Music AI 🎵</h2>
           </div>
 
           <div className="flex items-center gap-2 mr-2">
@@ -202,19 +201,22 @@ export default function Chat() {
                   <div className="bg-[#F48120]/10 text-[#F48120] rounded-full p-3 inline-flex">
                     <Robot size={24} />
                   </div>
-                  <h3 className="font-semibold text-lg">Welcome to AI Chat</h3>
+                  <h3 className="font-semibold text-lg">Welcome to Mood Music AI 🎵</h3>
                   <p className="text-muted-foreground text-sm">
-                    Start a conversation with your AI assistant. Try asking
-                    about:
+                    I'm your personal mood-based playlist creator! Tell me about your mood and I'll suggest music. Try asking:
                   </p>
                   <ul className="text-sm text-left space-y-2">
                     <li className="flex items-center gap-2">
                       <span className="text-[#F48120]">•</span>
-                      <span>Weather information for any city</span>
+                      <span>"I'm feeling sad, what music should I listen to?"</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="text-[#F48120]">•</span>
-                      <span>Local time in different locations</span>
+                      <span>"Create a workout playlist for me"</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-[#F48120]">•</span>
+                      <span>"I need music for studying"</span>
                     </li>
                   </ul>
                 </div>
@@ -243,9 +245,7 @@ export default function Chat() {
                     }`}
                   >
                     {showAvatar && !isUser ? (
-                      <div className="w-8 h-8 rounded-full bg-neutral-800 dark:bg-neutral-700 flex items-center justify-center text-white font-bold text-sm border border-neutral-300 dark:border-neutral-600" title="Mood Music Master">
-                        🎵
-                      </div>
+                      <Avatar username={"AI"} />
                     ) : (
                       !isUser && <div className="w-8" />
                     )}
@@ -342,28 +342,6 @@ export default function Chat() {
               </div>
             );
           })}
-          
-          {/* Loading Animation */}
-          {status === 'in_progress' && (
-            <div className="flex justify-start">
-              <div className="flex gap-2 max-w-[85%]">
-                <div className="w-8 h-8 rounded-full bg-neutral-800 dark:bg-neutral-700 flex items-center justify-center text-white font-bold text-sm border border-neutral-300 dark:border-neutral-600" title="Mood Music Master">
-                  🎵
-                </div>
-                <div>
-                  <Card className="p-3 rounded-md bg-neutral-100 dark:bg-neutral-900 rounded-bl-none border-assistant-border">
-                    <div className="flex items-center gap-2">
-                      <Loader size={16} title="Mood Music Master is thinking..." />
-                      <span className="text-sm text-muted-foreground">
-                        Creating your perfect playlist...
-                      </span>
-                    </div>
-                  </Card>
-                </div>
-              </div>
-            </div>
-          )}
-          
           <div ref={messagesEndRef} />
         </div>
 
@@ -441,14 +419,14 @@ export default function Chat() {
   );
 }
 
-const hasWorkersAiPromise = fetch("/check-workers-ai").then((res) =>
+const hasWorkersAIPromise = fetch("/check-open-ai-key").then((res) =>
   res.json<{ success: boolean }>()
 );
 
 function HasWorkersAI() {
-  const hasWorkersAi = use(hasWorkersAiPromise);
+  const hasWorkersAI = use(hasWorkersAIPromise);
 
-  if (!hasWorkersAi.success) {
+  if (!hasWorkersAI.success) {
     return (
       <div className="fixed top-0 left-0 right-0 z-50 bg-red-500/10 backdrop-blur-sm">
         <div className="max-w-3xl mx-auto p-4">
@@ -474,32 +452,22 @@ function HasWorkersAI() {
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-red-600 dark:text-red-400 mb-2">
-                  Workers AI Not Available
+                  Workers AI Not Configured
                 </h3>
                 <p className="text-neutral-600 dark:text-neutral-300 mb-1">
-                  Requests to the AI models will not work until Workers AI is properly configured.
+                  Requests to the API, including from the frontend UI, will not
+                  work until Workers AI is properly configured.
                 </p>
                 <p className="text-neutral-600 dark:text-neutral-300">
-                  Workers AI should be available automatically with your Cloudflare account. Check{" "}
-                  <a
-                    href="https://developers.cloudflare.com/workers-ai/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-red-600 dark:text-red-400"
-                  >
-                    Workers AI documentation
-                  </a>{" "}
-                  for more information about AI bindings.
-                  <br />
-                  This app uses Llama 3.3 on Workers AI (free tier included).{" "}
-                  <a
-                    href="https://github.com/cloudflare/agents-starter?tab=readme-ov-file#use-a-different-ai-model-provider"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-red-600 dark:text-red-400"
-                  >
-                    instructions.
-                  </a>
+                  Please ensure your{" "}
+                  <code className="bg-red-100 dark:bg-red-900/30 px-1.5 py-0.5 rounded text-red-600 dark:text-red-400 font-mono text-sm">
+                    wrangler.jsonc
+                  </code>{" "}
+                  has the AI binding configured. Make sure you're running with{" "}
+                  <code className="bg-red-100 dark:bg-red-900/30 px-1.5 py-0.5 rounded text-red-600 dark:text-red-400 font-mono text-sm">
+                    npm start
+                  </code>{" "}
+                  (not a regular Vite dev server).
                 </p>
               </div>
             </div>
