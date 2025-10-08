@@ -1,133 +1,152 @@
-/**
- * Tool definitions for the AI chat agent
- * Tools can either require human confirmation or execute automatically
- */
-import { tool, type ToolSet } from "ai";
-import { z } from "zod/v3";
-
-import type { Chat } from "./server";
-import { getCurrentAgent } from "agents";
-import { scheduleSchema } from "agents/schedule";
+import { tool } from "ai";
+import { z } from "zod";
+import type { ToolSet } from "ai";
 
 /**
- * Weather information tool that requires human confirmation
- * When invoked, this will present a confirmation dialog to the user
+ * Create a music playlist based on mood, activity, and preferences
  */
-const getWeatherInformation = tool({
-  description: "show the weather in a given city to the user",
-  inputSchema: z.object({ city: z.string() })
-  // Omitting execute function makes this tool require human confirmation
-});
-
-/**
- * Local time tool that executes automatically
- * Since it includes an execute function, it will run without user confirmation
- * This is suitable for low-risk operations that don't need oversight
- */
-const getLocalTime = tool({
-  description: "get the local time for a specified location",
-  inputSchema: z.object({ location: z.string() }),
-  execute: async ({ location }) => {
-    console.log(`Getting local time for ${location}`);
-    return "10am";
-  }
-});
-
-const scheduleTask = tool({
-  description: "A tool to schedule a task to be executed at a later time",
-  inputSchema: scheduleSchema,
-  execute: async ({ when, description }) => {
-    // we can now read the agent context from the ALS store
-    const { agent } = getCurrentAgent<Chat>();
-
-    function throwError(msg: string): string {
-      throw new Error(msg);
-    }
-    if (when.type === "no-schedule") {
-      return "Not a valid schedule input";
-    }
-    const input =
-      when.type === "scheduled"
-        ? when.date // scheduled
-        : when.type === "delayed"
-          ? when.delayInSeconds // delayed
-          : when.type === "cron"
-            ? when.cron // cron
-            : throwError("not a valid schedule input");
-    try {
-      agent!.schedule(input!, "executeTask", description);
-    } catch (error) {
-      console.error("error scheduling task", error);
-      return `Error scheduling task: ${error}`;
-    }
-    return `Task scheduled for type "${when.type}" : ${input}`;
-  }
-});
-
-/**
- * Tool to list all scheduled tasks
- * This executes automatically without requiring human confirmation
- */
-const getScheduledTasks = tool({
-  description: "List all tasks that have been scheduled",
-  inputSchema: z.object({}),
-  execute: async () => {
-    const { agent } = getCurrentAgent<Chat>();
-
-    try {
-      const tasks = agent!.getSchedules();
-      if (!tasks || tasks.length === 0) {
-        return "No scheduled tasks found.";
-      }
-      return tasks;
-    } catch (error) {
-      console.error("Error listing scheduled tasks", error);
-      return `Error listing scheduled tasks: ${error}`;
-    }
-  }
-});
-
-/**
- * Tool to cancel a scheduled task by its ID
- * This executes automatically without requiring human confirmation
- */
-const cancelScheduledTask = tool({
-  description: "Cancel a scheduled task using its ID",
+const createPlaylist = tool({
+  description: "Create a personalized music playlist based on mood, activity, and music preferences",
   inputSchema: z.object({
-    taskId: z.string().describe("The ID of the task to cancel")
+    mood: z.string().describe("The user's current mood (e.g., happy, sad, energetic, calm, angry, romantic)"),
+    activity: z.string().optional().describe("Activity the playlist is for (e.g., workout, study, relaxation, party, driving)"),
+    genres: z.array(z.string()).optional().describe("Preferred music genres (e.g., rock, pop, hip-hop, electronic, jazz)"),
+    playlistName: z.string().optional().describe("Custom name for the playlist"),
+    songCount: z.number().describe("Number of songs to include in the playlist (1-50)")
   }),
-  execute: async ({ taskId }) => {
-    const { agent } = getCurrentAgent<Chat>();
-    try {
-      await agent!.cancelSchedule(taskId);
-      return `Task ${taskId} has been successfully canceled.`;
-    } catch (error) {
-      console.error("Error canceling scheduled task", error);
-      return `Error canceling task ${taskId}: ${error}`;
+  execute: async ({ mood, activity, genres, playlistName, songCount }) => {
+    console.log(`Creating playlist: ${playlistName} with ${songCount} songs for ${mood} mood`);
+    
+    // Validate songCount
+    if (typeof songCount !== 'number' || songCount < 1 || songCount > 50) {
+      return "Please specify a valid number of songs between 1 and 50.";
     }
+    
+    // Generate playlist name if not provided
+    const finalPlaylistName = playlistName || `${mood.charAt(0).toUpperCase() + mood.slice(1)} Vibes${activity ? ` for ${activity}` : ''}`;
+    
+    // Create text for genre and activity
+    const activityText = activity ? ` perfect for ${activity}` : '';
+    
+    // Signal the main AI to generate a dynamic playlist
+    return `PLAYLIST_REQUEST: Create a ${songCount}-song ${mood} playlist${activityText}. Name: ${finalPlaylistName}. Genres: ${genres?.join(', ') || 'various'}. Generate real songs that match this mood and activity.`;
   }
 });
 
 /**
- * Export all available tools
+ * Mood analysis tool
+ * Analyzes user's mood from their message to suggest appropriate music
+ */
+const analyzeMood = tool({
+  description: "Analyze the user's mood from their message to suggest appropriate music",
+  inputSchema: z.object({
+    userMessage: z.string().describe("The user's message to analyze for mood")
+  }),
+  execute: async ({ userMessage }) => {
+    console.log(`Analyzing mood from message: ${userMessage}`);
+    
+    // Simple mood analysis based on keywords
+    const message = userMessage.toLowerCase();
+    
+    let detectedMood = 'neutral';
+    let confidence = 0.5;
+    
+    // Sad mood indicators
+    if (message.includes('sad') || message.includes('depressed') || message.includes('down') || 
+        message.includes('crying') || message.includes('heartbroken') || message.includes('lonely') ||
+        message.includes('upset') || message.includes('blue') || message.includes('melancholy')) {
+      detectedMood = 'sad';
+      confidence = 0.8;
+    }
+    // Happy mood indicators
+    else if (message.includes('happy') || message.includes('excited') || message.includes('great') ||
+             message.includes('awesome') || message.includes('fantastic') || message.includes('wonderful') ||
+             message.includes('amazing') || message.includes('cheerful') || message.includes('joyful')) {
+      detectedMood = 'happy';
+      confidence = 0.8;
+    }
+    // Angry mood indicators
+    else if (message.includes('angry') || message.includes('mad') || message.includes('furious') ||
+             message.includes('pissed') || message.includes('annoyed') || message.includes('frustrated') ||
+             message.includes('rage') || message.includes('hate')) {
+      detectedMood = 'angry';
+      confidence = 0.8;
+    }
+    // Energetic mood indicators
+    else if (message.includes('energetic') || message.includes('pumped') || message.includes('hyped') ||
+             message.includes('workout') || message.includes('exercise') || message.includes('gym') ||
+             message.includes('running') || message.includes('motivated')) {
+      detectedMood = 'energetic';
+      confidence = 0.8;
+    }
+    
+    return `Detected mood: ${detectedMood} (${Math.round(confidence * 100)}% confidence). The function suggests creating a playlist that matches this mood.`;
+  }
+});
+
+/**
+ * Get music recommendations based on preferences
+ */
+const getMusicRecommendations = tool({
+  description: "Get music recommendations based on user preferences and listening history",
+  inputSchema: z.object({
+    genres: z.array(z.string()).optional().describe("Preferred genres"),
+    artists: z.array(z.string()).optional().describe("Favorite artists"),
+    mood: z.string().optional().describe("Current mood"),
+    excludeGenres: z.array(z.string()).optional().describe("Genres to avoid")
+  }),
+  execute: async ({ genres, artists, mood, excludeGenres }) => {
+    console.log(`Getting recommendations for genres: ${genres}, artists: ${artists}, mood: ${mood}`);
+    
+    const recommendations = {
+      songs: [
+        "Based on your preferences, here are some recommendations:",
+        "• Discover Weekly style suggestions",
+        "• Similar artists to your favorites",
+        "• New releases in your preferred genres",
+        "• Hidden gems you might enjoy"
+      ],
+      artists: [
+        "Artists you might like based on your taste",
+        "Similar to your favorite artists",
+        "Trending in your preferred genres"
+      ],
+      playlists: [
+        "Curated playlists matching your style",
+        "Genre-specific collections",
+        "Mood-based playlists"
+      ]
+    };
+    
+    return `Music recommendations based on your preferences:
+    
+Songs: ${recommendations.songs.join('\n')}
+
+Artists: ${recommendations.artists.join('\n')}
+
+Playlists: ${recommendations.playlists.join('\n')}
+
+${excludeGenres ? `Avoiding: ${excludeGenres.join(', ')}` : ''}`;
+  }
+});
+
+/**
+ * Tool definitions for the AI model
  * These will be provided to the AI model to describe available capabilities
+ * Only music-related tools are included
  */
 export const tools = {
-  getWeatherInformation,
-  getLocalTime,
-  scheduleTask,
-  getScheduledTasks,
-  cancelScheduledTask
+  createPlaylist,
+  analyzeMood,
+  getMusicRecommendations
 } satisfies ToolSet;
 
 /**
  * Implementation of confirmation-required tools
  * This object contains the actual logic for tools that need human approval
  * Each function here corresponds to a tool above that doesn't have an execute function
+ * Currently empty as all music tools execute automatically
  */
 export const executions = {
-  getWeatherInformation: async ({ city }: { city: string }) => {
-    console.log(`Getting weather information for ${city}`);
-    return `The weather in ${city} is sunny`;
-  }
+  // No confirmation-required tools for music functionality
 };
